@@ -22,6 +22,11 @@ def list_students(db: DatabaseSession, user: CurrentUser, search: str = Query(""
     return student_service.list_students(db, actor_id=user.id, search=search, offset=offset, limit=limit)
 
 
+@router.get("/registration-settings")
+def registration_settings(db: DatabaseSession, user: CurrentUser):
+    return student_service.registration_settings(db,actor_id=user.id)
+
+
 @router.get("/{student_id}", response_model=StudentRead)
 def get_student(student_id: UUID, db: DatabaseSession, user: CurrentUser):
     return student_service.get_student(db, student_id, actor_id=user.id)

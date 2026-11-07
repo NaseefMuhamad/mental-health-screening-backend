@@ -34,12 +34,12 @@ def validate_page(offset: int, limit: int) -> None:
 
 
 def screening_visibility(actor: User):
-    """Admin: all; screening staff: own; counsellor: assigned, submitted cases."""
+    """Read scope: admin operational data; screening staff own; counsellors all submitted."""
     if actor.role == UserRole.ADMINISTRATOR:
         return Screening.id.is_not(None)
     if actor.role == UserRole.SCREENING_PERSONNEL:
         return Screening.recorded_by == actor.id
-    return (Screening.assigned_counsellor_id == actor.id) & (Screening.review_status != "draft")
+    return Screening.review_status != "draft"
 
 
 def load_screening(db: Session, screening_id: UUID, actor: User, *, lock: bool = False) -> Screening:
@@ -73,3 +73,18 @@ def write_operation(db: Session):
     except BaseException:
         db.rollback()
         raise
+
+
+def load_assigned_screening(db: Session, screening_id: UUID, actor: User, *, lock: bool = False) -> Screening:
+    """Private notes and case actions require assignment, regardless of read scope."""
+    statement = select(Screening).where(
+        Screening.id == screening_id,
+        Screening.assigned_counsellor_id == actor.id,
+        Screening.review_status != "draft",
+    )
+    if lock:
+        statement = statement.with_for_update()
+    screening = db.scalar(statement.execution_options(populate_existing=True))
+    if screening is None:
+        raise NotFound("Assigned screening not found.")
+    return screening

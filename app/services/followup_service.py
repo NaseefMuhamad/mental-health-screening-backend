@@ -10,7 +10,7 @@ from app.schemas.followup import (
     FollowupCancel, FollowupComplete, FollowupCreate, FollowupRead, FollowupReschedule, FollowupStatus,
 )
 from app.schemas.user import UserRole
-from app.services._common import audit, load_screening, require_actor, validate_page, write_operation
+from app.services._common import audit, load_assigned_screening, require_actor, validate_page, write_operation
 from app.services.errors import Conflict, NotFound
 
 
@@ -20,7 +20,7 @@ def _load(db: Session, followup_id: UUID, actor, *, lock: bool = False) -> Follo
     if item is None:
         raise NotFound("Follow-up not found.")
     try:
-        load_screening(db, item.screening_id, actor, lock=lock)
+        load_assigned_screening(db, item.screening_id, actor, lock=lock)
     except NotFound:
         raise NotFound("Follow-up not found.") from None
     statement = select(Followup).where(Followup.id == followup_id)
@@ -32,7 +32,7 @@ def _load(db: Session, followup_id: UUID, actor, *, lock: bool = False) -> Follo
 def create_followup(db: Session, payload: FollowupCreate, *, actor_id: UUID) -> FollowupRead:
     with write_operation(db):
         actor = require_actor(db, actor_id, {UserRole.COUNSELLOR})
-        screening = load_screening(db, payload.screening_id, actor, lock=True)
+        screening = load_assigned_screening(db, payload.screening_id, actor, lock=True)
         if screening.review_status not in {"in_review", "reviewed"}:
             raise Conflict("Begin review before scheduling a follow-up.")
         item = Followup(**payload.model_dump(), student_id=screening.student_id,

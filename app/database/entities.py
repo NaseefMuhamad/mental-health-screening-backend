@@ -101,6 +101,22 @@ class Screening(Base):
     assigned_counsellor_id: Mapped[UUID | None] = mapped_column(
         ForeignKey("users.id", ondelete="RESTRICT"), index=True, default=None
     )
+    student: Mapped[Student] = relationship(Student, foreign_keys=[student_id], lazy="selectin")
+
+    @property
+    def student_name(self):
+        return self.student.name
+
+    @property
+    def student_code(self):
+        return self.student.student_code
+
+    assigned_counsellor: Mapped[User | None] = relationship(User, foreign_keys=[assigned_counsellor_id], lazy="selectin")
+
+    @property
+    def assigned_counsellor_name(self):
+        return self.assigned_counsellor.name if self.assigned_counsellor else None
+
     review_status: Mapped[str] = mapped_column(String(32), default="draft", index=True)
     prediction_status: Mapped[str] = mapped_column(String(32), default="unavailable")
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
@@ -214,6 +230,17 @@ class CounsellingRecord(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
 
 
+    screening: Mapped[Screening] = relationship(Screening, foreign_keys=[screening_id], lazy="selectin")
+
+    @property
+    def student_name(self):
+        return self.screening.student_name
+
+    @property
+    def student_code(self):
+        return self.screening.student_code
+
+
 class Followup(Base):
     __tablename__ = "followups"
     __table_args__ = (
@@ -234,6 +261,17 @@ class Followup(Base):
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
 
 
+    student: Mapped[Student] = relationship(Student, foreign_keys=[student_id], lazy="selectin")
+
+    @property
+    def student_name(self):
+        return self.student.name
+
+    @property
+    def student_code(self):
+        return self.student.student_code
+
+
 class CaseHandover(Base):
     """Preserve who transferred a case, to whom, when and why."""
 
@@ -244,4 +282,29 @@ class CaseHandover(Base):
     new_counsellor_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
     actor_id: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
     reason: Mapped[str] = mapped_column(Text)
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+
+
+class ScreeningAssessment(Base):
+    """Append-only contextual input snapshots collected by the assigned counsellor."""
+    __tablename__ = "screening_assessments"
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    screening_id: Mapped[UUID] = mapped_column(ForeignKey("screenings.id", ondelete="RESTRICT"), index=True)
+    recorded_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    inputs_json: Mapped[str] = mapped_column(Text)
+    protocol: Mapped[str] = mapped_column(String(80), default="demo_dataset_scales_v1")
+    created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)
+
+
+class ScreeningPrediction(Base):
+    """Separate stress/anxiety outputs linked to the exact assessment snapshot."""
+    __tablename__ = "screening_predictions"
+    id: Mapped[UUID] = mapped_column(Uuid, primary_key=True, default=uuid4)
+    screening_id: Mapped[UUID] = mapped_column(ForeignKey("screenings.id", ondelete="RESTRICT"), index=True)
+    assessment_id: Mapped[UUID] = mapped_column(ForeignKey("screening_assessments.id", ondelete="RESTRICT"), index=True)
+    requested_by: Mapped[UUID] = mapped_column(ForeignKey("users.id", ondelete="RESTRICT"))
+    stress_level: Mapped[str] = mapped_column(String(10))
+    anxiety_level: Mapped[str] = mapped_column(String(10))
+    model_version: Mapped[str] = mapped_column(String(120))
+    model_details_json: Mapped[str] = mapped_column(Text)
     created_at: Mapped[datetime] = mapped_column(UTCDateTime(), default=utc_now)

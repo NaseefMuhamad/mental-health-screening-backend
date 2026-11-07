@@ -24,6 +24,8 @@ class CounsellingCreate(InputModel):
 
 
 class CounsellingRead(OutputModel):
+    student_name: str | None = None
+    student_code: str | None = None
     """Return only to an authorised counsellor/reviewer, not general staff lists."""
 
     id: UUID

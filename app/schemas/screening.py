@@ -3,7 +3,8 @@
 from enum import Enum
 from uuid import UUID
 
-from pydantic import AwareDatetime
+from pydantic import AwareDatetime, Field, model_validator
+from app.schemas.assessment import AssessmentCreate
 
 from app.schemas._common import InputModel,NotesText ,OutputModel
 from app.schemas.measurement import MeasurementCreate, MeasurementRead
@@ -25,20 +26,34 @@ class ScreeningCreate(InputModel):
     student_id: UUID
     measured_at: AwareDatetime
     measurements: MeasurementCreate
+    assessment: AssessmentCreate | None = None
+    submit_for_review: bool = Field(default=False, strict=True)
+
+    @model_validator(mode="after")
+    def require_complete_submission(self):
+        if self.submit_for_review and self.assessment is None:
+            raise ValueError("Complete all five screening questions before submission.")
+        return self
 
 
 class ScreeningAssignment(InputModel):
     assigned_counsellor_id: UUID
 
 
-class ScreeningRead(OutputModel):
+class ScreeningOperationalRead(OutputModel):
+    student_name: str | None = None
+    student_code: str | None = None
     id: UUID
     student_id: UUID
     measured_at: AwareDatetime
     recorded_by: UUID
     assigned_counsellor_id: UUID | None = None
+    assigned_counsellor_name: str | None = None
     review_status: ReviewStatus
     prediction_status: PredictionStatus
-    measurements: MeasurementRead
     created_at: AwareDatetime
     submitted_at: AwareDatetime | None = None
+
+
+class ScreeningRead(ScreeningOperationalRead):
+    measurements: MeasurementRead

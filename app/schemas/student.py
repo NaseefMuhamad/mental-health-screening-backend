@@ -18,7 +18,7 @@ class StudentCreate(InputModel):
     age: AgeYears
     department: ShortText
     academic_year: AcademicYear
-    institution: ShortText
+    institution: ShortText | None = None
 
 
 class StudentUpdate(InputModel):
@@ -28,7 +28,7 @@ class StudentUpdate(InputModel):
     age: AgeYears
     department: ShortText
     academic_year: AcademicYear
-    institution: ShortText
+    institution: ShortText | None = None
 
 
 class StudentRead(OutputModel):

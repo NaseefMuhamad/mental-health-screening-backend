@@ -7,7 +7,7 @@ from app.schemas.prediction import PredictionRead, PredictionRequest
 from app.services import prediction_service
 
 
-router = APIRouter(prefix="/predictions", tags=["Predictions (model unavailable)"])
+router = APIRouter(prefix="/predictions", tags=["Stress and anxiety demo predictions"])
 
 
 @router.post("", response_model=PredictionRead)

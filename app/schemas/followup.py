@@ -34,6 +34,8 @@ class FollowupCancel(InputModel):
 
 
 class FollowupRead(OutputModel):
+    student_name: str | None = None
+    student_code: str | None = None
     id: UUID
     screening_id: UUID
     student_id: UUID

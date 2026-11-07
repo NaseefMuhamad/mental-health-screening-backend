@@ -1,40 +1,37 @@
-"""Prediction contracts without assuming stress/anxiety classes or ML features."""
-
+"""Separate simulated category estimates, never a combined diagnosis."""
 from enum import Enum
 from uuid import UUID
+from pydantic import AwareDatetime,model_validator
+from app.schemas._common import InputModel,OutputModel,ShortText
 
-from pydantic import AwareDatetime, model_validator
-from typing_extensions import Self
+class PredictionStatus(str,Enum):
+    UNAVAILABLE='unavailable'
+    PROCESSING='processing'
+    AVAILABLE='available'
+    FAILED='failed'
 
-from app.schemas._common import InputModel, NotesText, OutputModel, ShortText
-
-
-class PredictionStatus(str, Enum):
-    UNAVAILABLE = "unavailable"
-    PROCESSING = "processing"
-    AVAILABLE = "available"
-    FAILED = "failed"
-
+class CategoryLevel(str,Enum):
+    LOW='Low'
+    MEDIUM='Medium'
+    HIGH='High'
 
 class PredictionRequest(InputModel):
-    """Backend retrieves validated measurements; clients do not supply outputs."""
-
     screening_id: UUID
-
 
 class PredictionRead(OutputModel):
     screening_id: UUID
     status: PredictionStatus
-    indication: NotesText | None = None
-    model_version: ShortText | None = None
-    generated_at: AwareDatetime | None = None
-    message: ShortText | None = None
+    assessment_id: UUID|None=None
+    stress_level: CategoryLevel|None=None
+    anxiety_level: CategoryLevel|None=None
+    model_version: ShortText|None=None
+    generated_at: AwareDatetime|None=None
+    message: str|None=None
+    prototype: bool=True
 
-    @model_validator(mode="after")
-    def require_actual_output(self) -> Self:
-        if self.status == PredictionStatus.AVAILABLE:
-            if self.indication is None or self.model_version is None or self.generated_at is None:
-                raise ValueError("Available predictions need an indication, model version and generation time.")
-        elif any(value is not None for value in (self.indication, self.model_version, self.generated_at)):
-            raise ValueError("Unavailable, processing or failed predictions must not contain model outputs.")
+    @model_validator(mode='after')
+    def validate_outputs(self):
+        outputs=(self.stress_level,self.anxiety_level,self.model_version,self.generated_at)
+        if self.status==PredictionStatus.AVAILABLE and (any(value is None for value in outputs) or self.assessment_id is None):raise ValueError('Available predictions require both categories, assessment, model version and time.')
+        if self.status!=PredictionStatus.AVAILABLE and any(value is not None for value in outputs):raise ValueError('Unavailable predictions must not include model outputs.')
         return self

@@ -3,7 +3,7 @@
 Run from the backend root:
     python -m app.database.init_db --check
 
-After models have been added and imported by app/models/__init__.py:
+After copying app/database/entities.py:
     python -m app.database.init_db --create-tables
 """
 
@@ -29,18 +29,18 @@ def create_tables() -> list[str]:
     users. Later schema changes must use Alembic migrations.
     """
     try:
-        # The next folder step will explicitly export models from this package.
-        importlib.import_module("app.models")
+        # Import the table definitions supplied alongside the services.
+        importlib.import_module("app.database.entities")
     except ModuleNotFoundError as error:
-        if error.name == "app.models":
+        if error.name == "app.database.entities":
             raise DatabaseConfigurationError(
-                "Models are not implemented yet. Run --check for now."
+                "Database entities are missing. Copy app/database/entities.py from this package."
             ) from None
         raise
 
     if not Base.metadata.tables:
         raise DatabaseConfigurationError(
-            "No model tables are registered. Import them in app/models/__init__.py first."
+            "No entity tables are registered. Check app/database/entities.py."
         )
     Base.metadata.create_all(bind=get_engine())
     return sorted(Base.metadata.tables)
